@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import axios from "axios"; 
+import axios from "axios";
 
 // Components
 import Navbar from "./Components/Common/Navbar";
@@ -12,7 +12,7 @@ import Footer from "./pages/Footer";
 import About from "./pages/About";
 import Home from "./pages/Home";
 import Reward from "./pages/Reward";
-import Support from "./pages/Sport"; 
+import Support from "./pages/Sport";
 import Login from "./pages/Login";
 import Offers from "./pages/Offers";
 import Cart from "./pages/Cart";
@@ -30,7 +30,10 @@ import Asso from "./pages/Asso";
 import PrivacyPolicy from "./pages/Privacy";
 import Location from "./pages/Location";
 
-const Pots = Planter; 
+const Pots = Planter;
+
+// ✅ SAFE ENV (fallback added)
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -45,23 +48,28 @@ const PageTransition = ({ children }) => (
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -10 }}
-    transition={{ duration: 0.4, ease: "easeOut" }}
+    transition={{ duration: 0.4 }}
   >
     {children}
   </motion.div>
 );
 
-const AnimatedRoutes = ({ inventory, setInventory, addToCart, cartItems, setCartItems, isAdminAuthenticated, setIsAdminAuthenticated }) => {
+const AnimatedRoutes = ({
+  inventory,
+  setInventory,
+  addToCart,
+  cartItems,
+  setCartItems,
+  isAdminAuthenticated,
+  setIsAdminAuthenticated
+}) => {
   const location = useLocation();
 
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageTransition><Home inventory={inventory} addToCart={addToCart} /></PageTransition>} />
-        
-        {/* SIRF IS LINE MEIN inventory={inventory} ADD KIYA HAI */}
         <Route path="/cart" element={<PageTransition><Cart cartItems={cartItems} setCartItems={setCartItems} addToCart={addToCart} inventory={inventory} /></PageTransition>} />
-        
         <Route path="/offers" element={<PageTransition><Offers inventory={inventory} addToCart={addToCart} /></PageTransition>} />
         <Route path="/plants" element={<PageTransition><Plant inventory={inventory} addToCart={addToCart} /></PageTransition>} />
         <Route path="/gardening" element={<PageTransition><Gardining inventory={inventory} addToCart={addToCart} /></PageTransition>} />
@@ -76,32 +84,25 @@ const AnimatedRoutes = ({ inventory, setInventory, addToCart, cartItems, setCart
         <Route path="/help" element={<PageTransition><Support /></PageTransition>} />
         <Route path="/orders" element={<PageTransition><Login /></PageTransition>} />
         <Route path="/gifts" element={<PageTransition><Gifting addToCart={addToCart} /></PageTransition>} />
-        
-        {/* Policy & About Routes */}
         <Route path="/privacy-policy" element={<PageTransition><PrivacyPolicy /></PageTransition>} />
         <Route path="/about-us" element={<PageTransition><About /></PageTransition>} />
         <Route path="/location" element={<PageTransition><Location /></PageTransition>} />
-        
-        {/* Admin Routes */}
+
         <Route path="/admin-login" element={<AdminLogin setAuth={setIsAdminAuthenticated} />} />
+
         <Route
           path="/admin"
           element={
             isAdminAuthenticated ? (
               <PageTransition>
-                <AdminDashboard 
-                  inventory={inventory} 
-                  setInventory={setInventory} 
-                  setAuth={setIsAdminAuthenticated} 
-                />
+                <AdminDashboard inventory={inventory} setInventory={setInventory} setAuth={setIsAdminAuthenticated} />
               </PageTransition>
             ) : (
               <Navigate to="/admin-login" replace />
             )
           }
         />
-        
-        {/* Wildcard hamesha end mein */}
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
@@ -116,9 +117,7 @@ const LayoutWrapper = ({ children, cartItems }) => {
     <>
       {!isAdminPage && <TopBar />}
       {!isAdminPage && <Navbar cartItems={cartItems} />}
-      <div className="main-content">
-          {children}
-      </div>
+      <div className="main-content">{children}</div>
       {!isAdminPage && <Footer />}
     </>
   );
@@ -136,12 +135,15 @@ function App() {
 
   const [inventory, setInventory] = useState([]);
 
+  // ✅ SAFE FETCH
   const fetchProducts = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/products");
+      console.log("API:", API);
+      const res = await axios.get(`${API}/api/products`);
       setInventory(res.data);
     } catch (err) {
       console.error("Fetch Error:", err);
+      setInventory([]); // prevent crash
     }
   };
 
@@ -158,7 +160,11 @@ function App() {
       const prodId = product._id || product.id;
       const existingItem = prev.find(item => (item._id || item.id) === prodId);
       if (existingItem) {
-        return prev.map(item => (item._id || item.id) === prodId ? { ...item, qty: (item.qty || 1) + 1 } : item);
+        return prev.map(item =>
+          (item._id || item.id) === prodId
+            ? { ...item, qty: (item.qty || 1) + 1 }
+            : item
+        );
       }
       return [...prev, { ...product, qty: 1 }];
     });
@@ -168,7 +174,7 @@ function App() {
     <Router>
       <ScrollToTop />
       <LayoutWrapper cartItems={cartItems}>
-        <AnimatedRoutes 
+        <AnimatedRoutes
           inventory={inventory}
           setInventory={setInventory}
           addToCart={addToCart}
